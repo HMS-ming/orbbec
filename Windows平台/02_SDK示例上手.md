@@ -21,7 +21,7 @@ cd "<安装目录>"
 
 编译产物输出到 **`bin\`** 目录，可执行文件名为 `ob_enumerate.exe`、`ob_imu.exe` 等。
 
-本文以 **`0.basic.enumerate`** 为例说明编译与运行流程。该示例不依赖 OpenCV，可用于确认设备及各传感器支持的流参数。
+本文以两个示例为主线：**`0.basic.enumerate`** 确认设备与流参数（不依赖 OpenCV，见第 4 节）；**`0.basic.quick_start`** 跑通视频流（需 OpenCV，见第 5 节）。
 
 ## 1. 示例程序一览
 
@@ -170,7 +170,48 @@ Sensor list:
 | 找不到某个 `ob_*.exe`       | 构建未成功，或该示例依赖 OpenCV 而本机未安装。重新执行第 3 节的构建流程，并检查输出中是否有 `OpenCV not found …` 警告；如需要该示例，请安装 C++ 版 OpenCV 后重新构建 |
 | 运行时报缺少 `OrbbecSDK.dll` | 未在 `bin\` 目录下运行。进入 `bin\` 目录后重新运行，或将 `bin` 目录添加到 PATH                                                     |
 
-## 5. 其他示例
+## 5. 跑通视频流：ob_quick_start
+
+`ob_enumerate` 只确认「设备在、支持哪些流」；**真正取流**用入门示例 `0.basic.quick_start`（`ob_quick_start.exe`，需已安装 OpenCV 才会生成）。
+
+**它做什么**（依据示例源码）：以默认配置启动 Pipeline（数据流管线，默认开启深度与彩色流），创建一个 **1280×720、标题为 QuickStart** 的窗口，循环等待复合帧并显示 —— 即**实时显示深度与彩色画面**；关闭窗口即停止数据流并退出程序。
+
+**获取视频流的关键代码**（摘自 `quick_start.cpp`，完整文件位于 `<安装目录>\examples\src\0.basic.quick_start\`）：
+
+```cpp
+ob::Pipeline pipe;                 // ① 创建数据流管线（Pipeline）
+pipe.start();                      // ② 以默认配置启动数据流（默认开启深度 + 彩色）
+
+ob_smpl::CVWindow win("QuickStart", 1280, 720, ob_smpl::ARRANGE_ONE_ROW);
+                                   // ③ 创建 1280×720 的显示窗口
+
+while (win.run()) {
+    auto frameSet = pipe.waitForFrameset();   // ④ 等待一帧复合数据（含所有已开启的流，超时 1000ms）
+    win.pushFramesToView(frameSet);           // ⑤ 将帧送入窗口显示
+}
+
+pipe.stop();                       // ⑥ 停止数据流
+```
+
+> ①②④⑥ 是 **SDK 的关键函数**：创建管线 → 启动数据流 → 等帧 → 停止。③⑤ 使用的 `ob_smpl::CVWindow` 是**示例自带的显示工具**（位于 `examples\src\utils\`，基于 OpenCV 实现），**不属于 SDK API** —— 自己的程序里可以用任意方式处理 `frameSet` 中的帧数据。
+>
+> 这段取流代码在 **Windows 与 Ubuntu 上完全一致**（同一份示例源码）—— SDK 的取流接口是跨平台的，两个平台的差异只在编译方式与运行时环境（见各自平台 01）。
+
+**运行**（仍在 `bin\` 目录）：
+
+```powershell
+.\ob_quick_start.exe
+```
+
+> 运行后应弹出标题为 **QuickStart** 的窗口，按单行排列显示深度与彩色画面；**关闭窗口即退出程序**。
+>
+> ⚠️ 刚启动的前一两帧，**深度或彩色可能只有其一**（两个传感器的就绪有先后，缺哪个并不固定），属正常现象 —— 自写程序时不要把「某一类帧为空」当作错误处理。
+>
+> 默认开启的数据流可在 SDK 配置文件中调整（`bin\OrbbecSDKConfig.xml`）。
+>
+> ⚠️ 该示例依赖 **OpenCV 与桌面环境**：未安装 OpenCV 时不会生成；无显示环境下无法运行 —— 无窗口取流可改用 `2.device.record.nogui`（把数据流录制为 `.bag` 文件），控制台数据可运行 `1.stream.imu`。
+
+## 6. 其他示例
 
 | 使用目的                  | 示例                                                                                                    |
 | --------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -181,9 +222,9 @@ Sensor list:
 > 完整清单（各示例的功能说明）见第 1 节。  
 > 示例程序均使用 `ob::Error` 异常进行错误处理。运行出错时，控制台会输出 `function` / `args` / `message` / `type` 四项信息，可据此定位问题。
 
-## 6. 后续步骤
+## 7. 后续步骤
 
-- 使用 SDK 编写取流程序 → `03_SDK自写取流.md`（待写）
+- 使用 SDK 编写取流程序 → [03 SDK 自写取流](../通用/03_SDK自写取流.md)
 - 其他平台 → [Ubuntu · 01 下载安装与准备](../Ubuntu平台/01_下载安装与准备.md) · [Ubuntu · 02 SDK 示例上手](../Ubuntu平台/02_SDK示例上手.md)
 
 ---
